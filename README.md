@@ -20,7 +20,7 @@ To start the script,
 
 Please do not use the VDO.Ninja TURN servers with your independent projects. Deploy your own if needed; you are currently welcome to use them to validate and test your setup however.
 
-## PLEASE CONTRIBUTE FIXES / IMPROVEMENTS
+## PLEASE CONTRIBUTE FIXES / IMPROVEMENTS 💘
 
 
 
