@@ -21,3 +21,6 @@ To start the script,
 Please do not use the VDO.Ninja TURN servers with your independent projects. Deploy your own if needed; you are currently welcome to use them to validate and test your setup however.
 
 ## PLEASE CONTRIBUTE FIXES / IMPROVEMENTS
+
+![image](https://github.com/steveseguin/whip/assets/2575698/de1872fa-68f9-429f-bc31-28159c5885cc)
+
