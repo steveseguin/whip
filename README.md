@@ -1,4 +1,4 @@
-# WHIP for VDO.Ninja
+# WHIP server-side API for VDO.Ninja
 A VDO.Ninja-specific WHIP/WHEP API and integration wrapper
 
 There are multiple goals of this project:
