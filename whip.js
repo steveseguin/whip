@@ -4,6 +4,7 @@ https://github.com/steveseguin/whip
 You need to retain this copyright notice.
 This free software is provided "as-is".
  */
+ 
 "use strict";
 var fs = require("fs");
 //var https = require("https");
@@ -12,10 +13,10 @@ var express = require("express");
 var app = express();
 var WebSocket = require("ws");
 var cors = require('cors');
-var fetch = require('node-fetch'); // npm install node-fetch@2
 
-//const key = fs.readFileSync("/etc/letsencrypt/live/wss.contribute.cam/privkey.pem");
-//const cert = fs.readFileSync("/etc/letsencrypt/live/wss.contribute.cam/fullchain.pem");
+// var fetch = require('node-fetch'); // npm install node-fetch@2
+//const key = fs.readFileSync("/etc/letsencrypt/live/wss.mydomain.com/privkey.pem");
+//const cert = fs.readFileSync("/etc/letsencrypt/live/wss.mydomain.com/fullchain.pem");
 
 //var server = https.createServer({key,cert}, app);
 var server = http.createServer(app); // in this app, I'm going to rely on Cloudflare for SSL. keep life easy
@@ -95,61 +96,8 @@ app.delete('*', async (req, res) => {
   return await processRequest(req, res, "delete");
 });
 
-var fetch = require('node-fetch'); // npm install node-fetch@2
-
-async function processRequestTwitch(req, res, meta = 'post') {
-
-  console.log("PROCESS");
-  let paths = req.path.split("/");
-  console.log(paths);
-
-  if (req.query.push) {
-    var room = req.query.push;
-    console.log("QUERY: " + room);
-  } else if ((paths.length > 1) && paths[1].length) {
-    var room = paths[1];
-    console.log("ROOM:" + room);
-  } else if (!req.headers.authorization) {
-    return res.status(403).json({
-      error: 'No authorization provided'
-    });
-  } else {
-    console.log("AUTH: " + req.headers.authorization);
-    var bearer = req.headers.authorization.split("Bearer ");
-    if (bearer.length !== 2) {
-      var room = req.headers.authorization;
-      console.log("ROOM: " + room);
-      // return res.status(403).json({ error: req.headers.authorization }); // not following spec, sadly
-    } else {
-      var room = bearer[1];
-      console.log("room: " + room);
-    }
-  }
-
-
-  const response = await fetch('https://g.webrtc.live-video.net:4443/v2/offer', {
-    method: meta,
-    body: req.rawBody,
-    headers: {
-      'Content-Type': 'application/sdp',
-      'Authorization': 'Bearer ' + room
-    }
-  });
-  const data = await response.text();
-
-
-  res.status(201);
-  res.set('Content-Type', "application/sdp");
-  res.set('Location', 'https://twitch.vdo.ninja/' + room); // todo
-  res.set('Link', ['<stun:stun.l.google.com:19302>; rel="ice-server"', '<turn:turn-cae1.vdo.ninja:3478?transport=udp>; rel="ice-server"; username="steve"; credential="setupYourOwnPlease"; credential-type="password"']);
-  return res.send(data);
-}
 
 async function processRequest(req, res, meta = null) {
-
-  if (req.get('host') == "twitch.vdo.ninja") {
-    return await processRequestTwitch(req, res, meta);
-  }
 
   console.log("PROCESS");
   let paths = req.path.split("/");
