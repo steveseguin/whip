@@ -9,4 +9,15 @@ There are multiple goals of this project:
 
 This service is written in Node.js, as to be accessible to all-levels of developers; it can be self-hosted or migrated to use with popular cloud worker services.
 
+### To use
+
+Install NodeJS and whatever depedencies you need.
+
+You may need to use SSL certs if not using a CDN that offers SSL tunneling; webRTC typically requires valid SSL. 
+
+To start the script,
+`sudo nodejs whip.js`
+
+Please do not use the VDO.Ninja TURN servers with your independent projects. Deploy your own if needed; you are currently welcome to use them to validate and test your setup however.
+
 ## PLEASE CONTRIBUTE FIXES / IMPROVEMENTS
