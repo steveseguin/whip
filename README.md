@@ -22,5 +22,6 @@ Please do not use the VDO.Ninja TURN servers with your independent projects. Dep
 
 ## PLEASE CONTRIBUTE FIXES / IMPROVEMENTS
 
-![image](https://github.com/steveseguin/whip/assets/2575698/de1872fa-68f9-429f-bc31-28159c5885cc)
+![image](https://github.com/steveseguin/whip/assets/2575698/cd368cf3-0544-4b71-a779-6c7d613f4766)
+
 
