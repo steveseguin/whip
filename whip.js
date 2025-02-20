@@ -11,9 +11,15 @@ const https = require("https");
 const express = require("express");
 const app = express();
 const WebSocket = require("ws");
-const fetch = require('node-fetch');
 const crypto = require('crypto');
 const path = require('path');
+
+let fetch;
+try {
+    fetch = globalThis.fetch || require('node-fetch');
+} catch {
+    fetch = require('node-fetch');
+}
 
 // SSL Configuration (fails to non-SSL)
 let server;
