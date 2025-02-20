@@ -41,6 +41,8 @@ openssl req -nodes -new -x509 -keyout key.pem -out cert.pem
 For production, use Let's Encrypt/Certbot or your preferred SSL provider.
 
 ### Configuration
+Server configuration is optional, as the defaults will work for most people.
+
 1. Environment variables:
 
 Configure the ENV variables using any of these methods:
@@ -63,7 +65,7 @@ CERT_PATH=/path/to/ssl/cert.pem
 PORT=8443' > /etc/environment.d/myapp.conf
 ```
 
-Check with: `echo $KEY_PATH`
+Check that the value took with: `echo $KEY_PATH`
 
 2. ICE Servers:
 Edit the iceServers array in server.js to configure your STUN/TURN servers:
@@ -74,7 +76,6 @@ const iceServers = [
     'turn:your.turn.server:3478; rel="ice-server"; username="user"; credential="pass"'
 ];
 ```
-
 ### Running the Server
 Development:
 ```bash
