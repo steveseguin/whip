@@ -150,9 +150,9 @@ app.patch('*', async (req, res) => {
             }
         }
 		
-		if (!iceUfrag || !icePwd) {
-			return res.status(400).send('Bad Request: Missing ICE credentials');
-		}
+        if (!iceUfrag || !icePwd) {
+            return res.status(400).send('Bad Request: Missing ICE credentials');
+        }
 
         // Parse and validate candidates
         const candidates = sdpLines
