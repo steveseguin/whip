@@ -42,14 +42,28 @@ For production, use Let's Encrypt/Certbot or your preferred SSL provider.
 
 ### Configuration
 1. Environment variables:
-```bash
-# SSL paths (optional, defaults to ./key.pem and ./cert.pem)
-KEY_PATH=/path/to/ssl/key.pem
-CERT_PATH=/path/to/ssl/cert.pem
 
-# Port (optional, defaults to 443 for HTTPS, 80 for HTTP)
-PORT=8443
+Configure the ENV variables using any of these methods:
+
+```bash
+# Temporary (current session)
+export KEY_PATH=/path/to/ssl/key.pem
+export CERT_PATH=/path/to/ssl/cert.pem
+export PORT=8443
+
+# Permanent (user)
+echo 'export KEY_PATH=/path/to/ssl/key.pem' >> ~/.bashrc
+echo 'export CERT_PATH=/path/to/ssl/cert.pem' >> ~/.bashrc
+echo 'export PORT=8443' >> ~/.bashrc
+source ~/.bashrc
+
+# System-wide
+sudo echo 'KEY_PATH=/path/to/ssl/key.pem
+CERT_PATH=/path/to/ssl/cert.pem
+PORT=8443' > /etc/environment.d/myapp.conf
 ```
+
+Check with: `echo $KEY_PATH`
 
 2. ICE Servers:
 Edit the iceServers array in server.js to configure your STUN/TURN servers:
