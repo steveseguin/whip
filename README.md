@@ -74,6 +74,18 @@ pm2 start whip.js
 pm2 save
 ```
 
+## VDO.Ninja configuration
+
+If using this with a self-hosted VDO.Ninja, you'll likely be wanting to specify the WHIP address to match you own.
+
+In the `index.html` file, contained in the root of the VDO.Ninja folder, edit the following line:
+```
+// session.whipServerURL = "wss://whip.vdo.ninja"; // If you deploy your own whip websocket service
+```
+Uncomment it and change the websocket address to match whatever you are using. eg: `session.whipServerURL = "ws://127.0.0.1:8443";`.
+
+If having problems, double check you have your SSL certs configured correctly, etc.
+
 ## Security Considerations
 - The server implements a 1MB message size limit for WebSocket connections
 - SSL is required for WebRTC in production environments
