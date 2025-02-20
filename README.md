@@ -64,13 +64,13 @@ const iceServers = [
 ### Running the Server
 Development:
 ```bash
-node server.js
+node whip.js
 ```
 
 Production (using PM2):
 ```bash
 npm install -g pm2
-pm2 start server.js
+pm2 start whip.js
 pm2 save
 ```
 
