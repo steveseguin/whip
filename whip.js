@@ -1,3 +1,9 @@
+/* MIT License
+Copyright (c) 2025 Steve Seguin
+https://github.com/steveseguin/whip
+You need to retain this copyright notice.
+This free software is provided "as-is".
+ */
 "use strict";
 const fs = require("fs");
 const http = require("http");
