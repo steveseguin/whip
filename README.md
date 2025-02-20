@@ -1,67 +1,102 @@
-# WHIP server code for VDO.Ninja
-A VDO.Ninja-specific WHIP/WHEP API and integration wrapper
+# WHIP/WHEP Server for VDO.Ninja
+A WebRTC HTTP Ingest Protocol (WHIP) and WebRTC HTTP Egress Protocol (WHEP) server implementation specifically designed for VDO.Ninja integration.
 
-There are multiple goals of this project:
-- to allow for self-hosting of the WHIP/WHEP service used by VDO.Ninja
-- to be a universally compatible WHIP/WHEP endpoint that's up to full spec. (WIP)
-- To allow VDO.Ninja users to use their own WHIP/WHEP service in place of Meshcast.io (WIP)
-- Potentially also offer easy integration support for popular SFU servers and services, such as Cloudflare/PION
+## Project Goals
+- Enable self-hosting of WHIP/WHEP services for VDO.Ninja
+- Provide a spec-compliant WHIP/WHEP endpoint (Work in Progress)
+- Allow VDO.Ninja users to replace Meshcast.io with their own WHIP/WHEP service
+- Future integration support for popular SFU servers (Cloudflare/PION)
 
-This script is NOT an SFU server, and so it requires an active viewer connected and waiting for incoming WHIP streams to successfully publish. Some WHIP publishing apps might not support STUN / TURN / NAT traversial, if the viewer is behind a NAT-enabled firewall, such as is common with consumer routers, things may still fail.
+## Important Notes
+- This is NOT an SFU server
+- Requires an active viewer connected before WHIP streaming can begin
+- Some WHIP publishers may have limited NAT traversal support
+- Written in Node.js for accessibility and cloud worker compatibility
+- The official service runs at whip.vdo.ninja
 
-This script  is written in Node.js, as to be accessible to all-levels of developers; it can be self-hosted or migrated to use with popular cloud worker services. That said, it may still be moderately challenging to deploy this code correctly.
+## Prerequisites
+1. Node.js (https://nodejs.org/)
+2. npm or yarn package manager
+3. SSL certificate (for production) or self-signed cert (for testing)
+4. Domain name (recommended for production SSL)
 
-This code (or a variant) is hosted as a service whip.vdo.ninja, which is what VDO.Ninja uses by default.
+## Quick Start
 
-### Prerequisites for a server deployment
+### Installation
+```bash
+# Clone the repository
+git clone [repository-url]
+cd whip-server
 
-1. **Download:** Assuming you aren't using a cloud worker, download/copy the whip.js code to your server
+# Install dependencies
+npm install express ws node-fetch
+```
 
-2. **Node.js:** Ensure that you have Node.js installed on your system. You can download it from the [official website](https://nodejs.org/).
+### SSL Setup
+For testing/offline use, generate a self-signed certificate:
+```bash
+openssl req -nodes -new -x509 -keyout key.pem -out cert.pem
+```
 
-3. **Dependencies:** Install any additional dependencies your project requires, such as by doing `npm install express` and `npm install ws`, etc.
+For production, use Let's Encrypt/Certbot or your preferred SSL provider.
 
-4. **SSL Certificates (if needed):** If you're not using a Content Delivery Network (CDN) that offers SSL+Websocket proxying (ie: Cloudflare), you may need to set up and add SSL support locally (ie: using `certbot`).
+### Configuration
+1. Environment variables:
+```bash
+# SSL paths (optional, defaults to ./key.pem and ./cert.pem)
+KEY_PATH=/path/to/ssl/key.pem
+CERT_PATH=/path/to/ssl/cert.pem
 
-WebRTC generally requires a valid SSL connection, so please get this step correct; it's almost always where the problem occurs. You may need a domain name also to provide SSL support. If you are using Cloudflare, you may need to set its SSL mode to "flexible" to allow your server to run without SSL, otherwise you will still need to install a certificate locally.
+# Port (optional, defaults to 443 for HTTPS, 80 for HTTP)
+PORT=8443
+```
 
-5. **TURN Servers (if needed):** Please do not use the VDO.Ninja TURN servers with your independent projects. Deploy your own TURN servers if needed; you are currently welcome to use mine those to validate and test your setup though.
+2. ICE Servers:
+Edit the iceServers array in server.js to configure your STUN/TURN servers:
+```javascript
+const iceServers = [
+    'stun:stun.l.google.com:19302; rel="ice-server"',
+    'stun:stun.cloudflare.com:3478; rel="ice-server"',
+    'turn:your.turn.server:3478; rel="ice-server"; username="user"; credential="pass"'
+];
+```
 
-### Configuring
+### Running the Server
+Development:
+```bash
+node server.js
+```
 
-If you self-deployed VDO.Ninja, you may need to update the code to point to your whip server, intead of whip.vdo.ninja.
+Production (using PM2):
+```bash
+npm install -g pm2
+pm2 start server.js
+pm2 save
+```
 
-In your `whip.js` file, you will also want to update the code so that whip.vdo.ninja is replaced with your whip server address, whereever it is found.
+## Security Considerations
+- The server implements a 1MB message size limit for WebSocket connections
+- SSL is required for WebRTC in production environments
+- CORS headers are preconfigured but may need adjustment
+- Custom TURN servers are required for production use
+- Authentication is implemented via Bearer tokens or URL parameters
 
-### Starting the server
+## Integration with VDO.Ninja
+To use with a self-hosted VDO.Ninja instance, update your VDO.Ninja configuration to point to your WHIP server instead of whip.vdo.ninja.
 
-To start the server, follow these steps:
+## Limitations
+- Requires active viewer connection for WHIP publishing
+- NAT traversal depends on proper STUN/TURN configuration
+- SSL setup is required but not handled by this package
+- Limited deployment support available
 
-1. Open your terminal and navigate to your project directory.
+## Support
+- Code issues & feature requests: Create a GitHub issue
+- General support: Join the Discord server (discord.vdo.ninja)
+- SSL/TURN setup: Outside current support scope
 
-2. Use the following command to start the server:
+## Contributing
+PRs welcome! Please contribute fixes and improvements 💘
 
-   ```
-   sudo node whip.js
-   ```
-
-   Replace `whip.js` with the name of your server script if it's different.
-
-   The server should now be running, and you'll see log messages indicating its status.
-
-3. For production deployment, consider setting up the script to run as an auto-starting system service.
- 
-
-### Limited deployment support
-
-If there is a problem with the code itself, or you have a feature request, create a ticket on Github or let me know on the Discord server (discord.vdo.ninja).
-
-I do not have time to help everyone with setting up SSL or TURN servers, etc, so support for those steps will be currently out of scope for this project. That may change in time.
-
-
-## PLEASE CONTRIBUTE FIXES / IMPROVEMENTS 
-
-💘
-
-
-
+## License
+MIT License - Copyright (c) 2024 VDO.Ninja
