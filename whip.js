@@ -39,6 +39,7 @@ var websocketServer = new WebSocket.Server({ server });
 
 var callback = {};
 var clients = [];
+const CALLBACK_TIMEOUT = Symbol("callback-timeout");
 
 // Define ICE servers configuration
 const iceServers = [ // not quite according to spec, since OBS 30 isn't following it exactly. I'll need to revisit.
@@ -51,7 +52,7 @@ const iceServers = [ // not quite according to spec, since OBS 30 isn't followin
 app.all('/*', function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "*");
-    res.header("Access-Control-Expose-Headers", "Content-Type, Location, Link, Whep");
+    res.header("Access-Control-Expose-Headers", "Content-Type, Location, Link, Whep, Accept-Patch");
     next();
 });
 
@@ -59,6 +60,7 @@ app.all('/*', function(req, res, next) {
 app.options('*', (req, res) => {
     console.log("OPTIONS");
     res.header('Access-Control-Allow-Methods', 'GET, PATCH, PUT, POST, DELETE, OPTIONS');
+    res.header('Accept-Patch', 'application/trickle-ice-sdpfrag');
     iceServers.forEach(server => {res.append('Link', server);});
     res.status(200).send();
 });
@@ -83,18 +85,17 @@ app.get('*', (req, res) => {
 // Restore HEAD and PUT handlers
 app.head('*', (req, res) => {
     console.log("HEAD");
-    return res.status(405);
+    return res.sendStatus(405);
 });
 
 app.put('*', (req, res) => {
     console.log("PUT");
-    return res.status(405);
+    return res.sendStatus(405);
 });
 
 // Request body parsing middleware
 app.use(function(req, res, next) {
-    var contentType = req.headers['content-type'] || '';
-    var mime = contentType.split(';')[0];
+    var mime = normalizeContentType(req.headers['content-type']);
 
     if ((mime !== 'application/trickle-ice-sdpfrag') && 
         (mime !== 'application/sdp') && 
@@ -130,11 +131,92 @@ function getRoomFromRequest(req) {
     return null;
 }
 
+function normalizeContentType(contentType) {
+    return (contentType || '').split(';')[0].trim().toLowerCase();
+}
+
+function normalizeCandidateLine(candidateLine) {
+    if (!candidateLine || typeof candidateLine !== "string") {
+        return null;
+    }
+
+    if (candidateLine.startsWith("a=candidate:")) {
+        return candidateLine;
+    }
+
+    if (candidateLine.startsWith("candidate:")) {
+        return "a=" + candidateLine;
+    }
+
+    return null;
+}
+
+function parseTrickleIceSdpFrag(body) {
+    const lines = typeof body === "string" ? body.split(/\r\n|\n/) : [];
+    const candidates = [];
+    let iceUfrag = null;
+    let icePwd = null;
+    let currentMid = null;
+    let mLineIndex = -1;
+    let currentMLineIndex = null;
+    let endOfCandidates = false;
+
+    for (const line of lines) {
+        if (!line) {
+            continue;
+        }
+
+        if (line.startsWith("a=ice-ufrag:")) {
+            iceUfrag = line.substring("a=ice-ufrag:".length);
+            continue;
+        }
+
+        if (line.startsWith("a=ice-pwd:")) {
+            icePwd = line.substring("a=ice-pwd:".length);
+            continue;
+        }
+
+        if (line.startsWith("a=mid:")) {
+            currentMid = line.substring("a=mid:".length);
+            continue;
+        }
+
+        if (line.startsWith("m=")) {
+            mLineIndex += 1;
+            currentMLineIndex = mLineIndex;
+            currentMid = null;
+            continue;
+        }
+
+        if (line.startsWith("a=end-of-candidates")) {
+            endOfCandidates = true;
+            continue;
+        }
+
+        const candidateLine = normalizeCandidateLine(line);
+        if (candidateLine) {
+            candidates.push({
+                candidateLine: candidateLine,
+                sdpMid: currentMid,
+                sdpMLineIndex: currentMLineIndex
+            });
+        }
+    }
+
+    return {
+        iceUfrag: iceUfrag,
+        icePwd: icePwd,
+        candidates: candidates,
+        endOfCandidates: endOfCandidates
+    };
+}
+
 // Enhanced PATCH handler for ICE candidates
 app.patch('*', async (req, res) => {
     console.log("PATCH");
     
-    if (req.headers['content-type'] !== 'application/trickle-ice-sdpfrag') {
+    const mime = normalizeContentType(req.headers['content-type']);
+    if (mime !== 'application/trickle-ice-sdpfrag' && mime !== 'application/ice') {
         return res.status(415).send('Unsupported Media Type');
     }
 
@@ -144,34 +226,25 @@ app.patch('*', async (req, res) => {
     }
 
     try {
-        const sdpLines = req.rawBody.split('\r\n');
-        let iceUfrag, icePwd;
+        const parsed = parseTrickleIceSdpFrag(req.rawBody || "");
+        const candidates = parsed.candidates.map(candidate => {
+            const payload = {
+                candidate: candidate.candidateLine,
+                sdpMLineIndex: candidate.sdpMLineIndex !== null ? candidate.sdpMLineIndex : 0,
+                sdpMid: candidate.sdpMid ? candidate.sdpMid : "0"
+            };
 
-        // Parse ICE credentials
-        for (const line of sdpLines) {
-            if (line.startsWith('a=ice-ufrag:')) {
-                iceUfrag = line.split(':')[1];
-            } else if (line.startsWith('a=ice-pwd:')) {
-                icePwd = line.split(':')[1];
+            if (parsed.iceUfrag) {
+                payload.usernameFragment = parsed.iceUfrag;
             }
-        }
-		
-        if (!iceUfrag || !icePwd) {
-            return res.status(400).send('Bad Request: Missing ICE credentials');
-        }
+            if (parsed.icePwd) {
+                payload.password = parsed.icePwd;
+            }
 
-        // Parse and validate candidates
-        const candidates = sdpLines
-            .filter(line => line.startsWith('a=candidate:'))
-            .map(line => ({
-                candidate: line,
-                sdpMLineIndex: 0,
-                sdpMid: "0",
-                usernameFragment: iceUfrag,
-                password: icePwd
-            }));
+            return payload;
+        });
 
-        if (candidates.length === 0) {
+        if (!candidates.length && !parsed.endOfCandidates) {
             return res.status(400).send('Bad Request: No valid candidates found');
         }
 
@@ -197,6 +270,21 @@ app.patch('*', async (req, res) => {
                         }
                     }));
                 });
+                if (parsed.endOfCandidates) {
+                    promises.push(new Promise((resolve) => {
+                        try {
+                            client.send(JSON.stringify({
+                                type: "end-of-candidates",
+                                streamID: room
+                            }));
+                            clientsInRoom++;
+                            resolve();
+                        } catch (e) {
+                            console.error("Error sending end-of-candidates:", e);
+                            resolve();
+                        }
+                    }));
+                }
             }
         });
 
@@ -216,11 +304,12 @@ app.patch('*', async (req, res) => {
 // Restore and enhance POST handler
 app.post('*', async (req, res) => {
     console.log("POST");
+    const host = req.get('host') || "";
     
     iceServers.forEach(server => {res.append('Link', server);});
-    res.header('Access-Control-Expose-Headers', 'Content-Type, Location, Link, Whep');
+    res.header('Access-Control-Expose-Headers', 'Content-Type, Location, Link, Whep, Accept-Patch');
     
-    if (req.get('host').startsWith("whep.")) {
+    if (host.startsWith("whep.")) {
         return await processRequestWHEP(req, res, "post");
     }
     
@@ -268,7 +357,7 @@ async function processRequestWHEP(req, res, meta = 'post') {
     callback[pid].reject = reject;
     setTimeout((pid) => {
       if (callback[pid]){
-        callback[pid].resolve('timeout');
+        callback[pid].resolve(CALLBACK_TIMEOUT);
         console.log("pid: "+pid);
         delete callback[pid];
       }
@@ -300,9 +389,14 @@ async function processRequestWHEP(req, res, meta = 'post') {
 		delete callback[pid];
 		return x;
 	});
+
+    if (cb === CALLBACK_TIMEOUT) {
+        return res.status(504).send('Gateway Timeout: Timed out waiting for SDP answer');
+    }
     res.status(201);
     res.set('Content-Type', "application/sdp");
     res.set('Location',  '/'+room);
+    res.set('Accept-Patch', 'application/trickle-ice-sdpfrag');
 	iceServers.forEach(server => {res.append('Link', server);});
 
     console.log(cb);
@@ -312,8 +406,9 @@ async function processRequestWHEP(req, res, meta = 'post') {
 }
 
 async function processRequest(req, res, meta = null) {
+    const host = req.get('host') || "";
     
-    if (req.get('host').startsWith("whep.")) {
+    if (host.startsWith("whep.")) {
         return await processRequestWHEP(req, res, meta);
     } // else whip.vdo.ninja
 
@@ -346,7 +441,7 @@ async function processRequest(req, res, meta = null) {
         callback[pid].reject = reject;
         setTimeout((pid) => {
             if (callback[pid]) {
-                callback[pid].resolve('timeout');
+                callback[pid].resolve(CALLBACK_TIMEOUT);
                 delete callback[pid];
             }
         }, 10000, pid);
@@ -373,13 +468,18 @@ async function processRequest(req, res, meta = null) {
         return x;
     });
     delete callback[pid];
+
+    if (cb === CALLBACK_TIMEOUT) {
+        return res.status(504).send('Gateway Timeout: Timed out waiting for SDP answer');
+    }
 	
     res.set('Content-Type', "application/sdp");
     res.set('Location', '/' + room);
+    res.set('Accept-Patch', 'application/trickle-ice-sdpfrag');
 	
     res.append('Link', `<${req.originalUrl}>; rel="trickle-ice"`);
 	iceServers.forEach(server => {res.append('Link', server);});
-    res.header('Access-Control-Expose-Headers', 'Content-Type, Location, Link, Whep');
+    res.header('Access-Control-Expose-Headers', 'Content-Type, Location, Link, Whep, Accept-Patch');
     res.status(201);
     let x = res.send("" +  cb);
     return x
