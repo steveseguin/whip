@@ -49,7 +49,7 @@ const iceServers = [ // not quite according to spec, since OBS 30 isn't followin
 ];  // note: I think it should rather be like: 'stun:stun.l.google.com:19302; rel="ice-server"', 
 
 // CORS and headers middleware
-app.all('/*', function(req, res, next) {
+app.all(/(.*)/, function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "*");
     res.header("Access-Control-Expose-Headers", "Content-Type, Location, Link, Whep, Accept-Patch");
@@ -57,7 +57,7 @@ app.all('/*', function(req, res, next) {
 });
 
 // Handle OPTIONS requests
-app.options('*', (req, res) => {
+app.options(/(.*)/, (req, res) => {
     console.log("OPTIONS");
     res.header('Access-Control-Allow-Methods', 'GET, PATCH, PUT, POST, DELETE, OPTIONS');
     res.header('Accept-Patch', 'application/trickle-ice-sdpfrag');
@@ -66,7 +66,7 @@ app.options('*', (req, res) => {
 });
 
 // Restore original GET route handler
-app.get('*', (req, res) => {
+app.get(/(.*)/, (req, res) => {
     console.log("GET");
     if (req.get('host') == "whep.vdo.ninja") {
         const path = req.path;
@@ -83,12 +83,12 @@ app.get('*', (req, res) => {
 });
 
 // Restore HEAD and PUT handlers
-app.head('*', (req, res) => {
+app.head(/(.*)/, (req, res) => {
     console.log("HEAD");
     return res.sendStatus(405);
 });
 
-app.put('*', (req, res) => {
+app.put(/(.*)/, (req, res) => {
     console.log("PUT");
     return res.sendStatus(405);
 });
@@ -212,7 +212,7 @@ function parseTrickleIceSdpFrag(body) {
 }
 
 // Enhanced PATCH handler for ICE candidates
-app.patch('*', async (req, res) => {
+app.patch(/(.*)/, async (req, res) => {
     console.log("PATCH");
     
     const mime = normalizeContentType(req.headers['content-type']);
@@ -302,7 +302,7 @@ app.patch('*', async (req, res) => {
 });
 
 // Restore and enhance POST handler
-app.post('*', async (req, res) => {
+app.post(/(.*)/, async (req, res) => {
     console.log("POST");
     const host = req.get('host') || "";
     
@@ -317,7 +317,7 @@ app.post('*', async (req, res) => {
 });
 
 // Restore DELETE handler
-app.delete('*', async (req, res) => {
+app.delete(/(.*)/, async (req, res) => {
     console.log("DELETE");
     return await processRequest(req, res, "delete");
 });
