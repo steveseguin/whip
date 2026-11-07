@@ -1,4 +1,5 @@
 import negotiateConnectionWithClientOffer from "./negotiateConnectionWithClientOffer.js";
+// Modified to release local capture immediately and handle late media permissions.
 /**
  * Example implementation of a client that uses WHIP to broadcast video over WebRTC
  *
@@ -41,7 +42,7 @@ export default class WHIPClient {
 		 */
 		this.accessLocalMediaSources()
 			.then((stream) => {
-				this.localStream = stream;
+				if (this.peerConnection.connectionState === "closed") return;
 				videoElement.srcObject = stream;
 			})
 			.catch(console.error);
@@ -56,6 +57,11 @@ export default class WHIPClient {
 		return navigator.mediaDevices
 			.getUserMedia({ video: true, audio: true })
 			.then((stream) => {
+				if (this.peerConnection.connectionState === "closed") {
+					stream.getTracks().forEach((track) => track.stop());
+					return stream;
+				}
+				this.localStream = stream;
 				stream.getTracks().forEach((track) => {
 					const transceiver = this.peerConnection.addTransceiver(track, {
 						/** WHIP is only for sending streaming media */
@@ -73,21 +79,25 @@ export default class WHIPClient {
 	}
 	/**
 	 * Terminate the streaming session
-	 * 1. Notify the WHIP server by sending a DELETE request
-	 * 2. Close the WebRTC connection
-	 * 3. Stop using the local camera and microphone
+	 * 1. Close the WebRTC connection
+	 * 2. Stop using the local camera and microphone
+	 * 3. Notify the WHIP server by sending a DELETE request
 	 *
 	 * Note that once you call this method, this instance of this WHIPClient cannot be reused.
 	 */
 	async disconnectStream() {
 		var _a;
-		const response = await fetch(this.endpoint, {
-			method: "DELETE",
-			mode: "cors",
-		});
 		this.peerConnection.close();
 		(_a = this.localStream) === null || _a === void 0
 			? void 0
 			: _a.getTracks().forEach((track) => track.stop());
+		if (this.videoElement.srcObject === this.localStream) {
+			this.videoElement.srcObject = null;
+		}
+		// A slow or failed server request must not keep local capture running.
+		await fetch(this.endpoint, {
+			method: "DELETE",
+			mode: "cors",
+		});
 	}
 }
