@@ -1,3 +1,4 @@
+<!-- Modified to repair the WHEP startup module syntax. -->
 <html>
 	<head>
 		<!-- This adapter normalizes cross-browser differences in WebRTC APIs. Currently necessary in order to support Firefox. -->
@@ -17,7 +18,7 @@
 		<script type="module">
 			import WHEPClient from "./WHEPClient.js";
 
-			const url = prompt("Enter the WHEP URL here");"
+			const url = prompt("Enter the WHEP URL here");
 			const videoElement = document.getElementById("remote-video");
 
 			self.client = new WHEPClient(url, videoElement);
